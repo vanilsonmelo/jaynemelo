@@ -1,7 +1,7 @@
 /* ══ SERVICE WORKER — Jayne Melo · Bordando Sonhos ══════════
    Cache offline: o app funciona mesmo sem internet
 ══════════════════════════════════════════════════════════ */
-const CACHE = 'jayne-melo-v1';
+const CACHE = 'jaynemelo';
 const FILES = [
   '/JAYNE_MELO_FINAL.html',
   '/financeiro.html',
