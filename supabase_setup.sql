@@ -31,11 +31,3 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_app_data_updated
   BEFORE UPDATE ON public.app_data
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
--- ═══════════════════════════════════════════════════════════
---  Após rodar este SQL, crie os 3 usuários em:
---  Authentication → Users → Add User
---    1. vanilson@jm.com  (ou o email que preferir)
---    2. jayne@jm.com
---    3. colaboradora@jm.com
--- ═══════════════════════════════════════════════════════════
