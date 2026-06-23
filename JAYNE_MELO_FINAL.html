@@ -664,7 +664,7 @@
       <label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a6e62;margin-bottom:5px">Senha</label>
       <input id="supa-pass" type="password" placeholder="••••••••" class="supa-field" style="margin-bottom:6px" onkeydown="if(event.key==='Enter')supaDoLogin()">
       <div id="supa-error" style="color:#9a5c62;font-size:12px;min-height:18px;margin-bottom:14px;text-align:center"></div>
-      <button class="supa-btn" id="supa-login-btn" onclick="supaDoLogin()"Entrar/button"
+      <button class="supa-btn" id="supa-login-btn" onclick="supaDoLogin()">Entrar</button>
     </div>
     <p style="text-align:center;font-size:11px;color:#8a6e62;margin-top:16px;opacity:.7">Ateliê Jayne Melo · Sistema de Gestão</p>
   </div>
@@ -2015,144 +2015,8 @@ ${o.obs ? `<div class="section"><div class="section-title">Observações</div><d
   <button onclick="window.print()">🖨️ Salvar como PDF / Imprimir</button>
 </div>
 
-    <script>
-    /* ══ SUPABASE — Jayne Melo ══════════════════════════════════
-       Autenticação + Sincronização em nuvem
-    ══════════════════════════════════════════════════════════ */
-    const _SUPA = supabase.createClient('https://svsncblzyrjlkjzfnjqr.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2c25jYmx6eXJqbGtqemZuanFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMTg1OTcsImV4cCI6MjA5NzU5NDU5N30.BBWWaRAIsLL2f8vx8sPFUTAF-hhv5p9xeV5GeDiVuBM', {
-      auth: { persistSession:true, autoRefreshToken:true }
-    });
-
-    const SUPA_KEYS = [
-      'jayne_estoque','jayne_catalogo','jayne_vendas','jayne_pedidos',
-      'jayne_fixos','jayne_orcamentos','jayne_pedidos_prod','jayne_vendas_fin',
-      'jayne_orc_cnt','jayne_ped_cnt','jayne_financeiro','jayne_fin_subs',
-      'jayne_fin_metas','jayne_fin_dist','jayne_fin_notas'
-    ];
-
-    /* ── Override localStorage para auto-sync ── */
-    const _origSet = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, value) {
-      _origSet(key, value);
-      if (SUPA_KEYS.includes(key)) supaSync(key, value);
-    };
-
-    async function supaSync(key, value) {
-      try {
-        const { data:{session} } = await _SUPA.auth.getSession();
-        if (!session) return;
-        let parsed;
-        try { parsed = JSON.parse(value); } catch { parsed = value; }
-        await _SUPA.from('app_data').upsert({ chave:key, valor:parsed }, { onConflict:'chave' });
-      } catch(e) { /* offline — localStorage já salvou */ }
-    }
-
-    async function syncFromCloud() {
-      try {
-        const { data, error } = await _SUPA.from('app_data').select('chave, valor');
-        if (error || !data) return;
-        data.forEach(row => {
-          if (row.valor !== null && row.valor !== undefined) {
-            const v = typeof row.valor === 'string' ? row.valor : JSON.stringify(row.valor);
-            localStorage.setItem.original ? localStorage.setItem.original(row.chave, v) : _origSet(row.chave, v);
-          }
-        });
-        console.log('✅ Dados sincronizados da nuvem:', data.length, 'registros');
-      } catch(e) { console.warn('⚠️ Sync offline — usando dados locais'); }
-    }
-
-    async function supaDoLogin() {
-      const email = document.getElementById('supa-email').value.trim();
-      const pass  = document.getElementById('supa-pass').value;
-      const errEl = document.getElementById('supa-error');
-      const btn   = document.getElementById('supa-login-btn');
-      errEl.textContent = '';
-      if (!email || !pass) { errEl.textContent = 'Preencha e-mail e senha.'; return; }
-      btn.disabled = true; btn.textContent = 'Entrando...';
-      try {
-        const { error } = await _SUPA.auth.signInWithPassword({ email, password:pass });
-        if (error) throw error;
-        await supaIniciar();
-      } catch(e) {
-        errEl.textContent = 'E-mail ou senha incorretos.';
-        btn.disabled = false; btn.textContent = 'Entrar';
-      }
-    }
-
-    async function supaLogout() {
-      await _SUPA.auth.signOut();
-      sessionStorage.removeItem('supa_synced');
-      location.reload();
-    }
-
-    async function supaIniciar() {
-      const { data:{session} } = await _SUPA.auth.getSession();
-      if (!session) {
-        document.getElementById('supa-login-screen').classList.remove('hidden');
-        return;
-      }
-      // Mostrar nome do usuário
-      const nome = session.user.email.split('@')[0];
-      document.getElementById('supa-user-name').textContent = nome;
-      document.getElementById('supa-user-bar').style.display = 'flex';
-
-      // Sincronizar da nuvem (uma vez por sessão de navegador)
-      const synced = sessionStorage.getItem('supa_synced');
-      if (!synced) {
-        sessionStorage.setItem('supa_synced','1');
-        await syncFromCloud();
-        // Recarregar dados nas variáveis do sistema
-        dadosEstoque       = JSON.parse(localStorage.getItem('jayne_estoque')       || '{}');
-        bancoProdutosAtelie= JSON.parse(localStorage.getItem('jayne_catalogo')      || '[]');
-        bancoOrcamentos    = JSON.parse(localStorage.getItem('jayne_orcamentos')    || '[]');
-        bancoPedidosProd   = JSON.parse(localStorage.getItem('jayne_pedidos_prod')  || '[]');
-        bancoVendasFin     = JSON.parse(localStorage.getItem('jayne_vendas_fin')    || '[]');
-        orcCounter         = parseInt(localStorage.getItem('jayne_orc_cnt') || '100');
-        pedCounter         = parseInt(localStorage.getItem('jayne_ped_cnt') || '1000');
-      }
-
-      // Ocultar tela de login e iniciar app
-      document.getElementById('supa-login-screen').classList.add('hidden');
-      renderizarTabelaEstoque();
-      if(document.querySelectorAll('#tabela-insumos-corpo tr').length === 0) adicionarLinhaInsumo();
-      renderizarGridProdutos(bancoProdutosAtelie);
-      renderizarVitrineCliente();
-      renderizarVariacoesCadastro();
-      atualizarLabelWhatsApp();
-      ativarModoVitrineSeNecessario();
-      renderizarSeletorAutonomia();
-      if(bancoProdutosAtelie.length > 0) produtoAtivoVitrine = bancoProdutosAtelie[0];
-      orcRenderizar();
-      pedRenderizar();
-      renderizarDashboard();
-      // ESC fecha modais
-      document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape') return;
-        ['modal-vit-detalhes','modal-config-wpp','modal-carrinho'].forEach(id => {
-          const m = document.getElementById(id);
-          if (m && !m.classList.contains('hidden')) {
-            if (id === 'modal-vit-detalhes') fecharDetalhesVitrine();
-            else if (id === 'modal-config-wpp') fecharConfigWhatsApp();
-            else if (id === 'modal-carrinho') fecharModalCarrinho();
-          }
-        });
-      });
-    }
-
-    // Iniciar ao carregar
-    window.addEventListener('load', supaIniciar);
-    </script>
 
 
-    <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-          console.log('✅ PWA Service Worker registrado');
-        }).catch(e => console.warn('SW não registrado (local):', e.message));
-      });
-    }
-    </script>
 
 </body>
 </html>`;
@@ -4828,5 +4692,133 @@ Pode me confirmar o prazo de produção e formas de pagamento, por favor? 🌸`;
         /* window.onload original desabilitado — init feito pelo supaIniciar() */
         window.__onload_disabled = function() { /* não chamado */ };
     </script>
+
+    <script>
+    /* ══ SUPABASE — Jayne Melo · Bordando Sonhos ══════════════ */
+    const _SUPA = supabase.createClient('https://svsncblzyrjlkjzfnjqr.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2c25jYmx6eXJqbGtqemZuanFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMTg1OTcsImV4cCI6MjA5NzU5NDU5N30.BBWWaRAIsLL2f8vx8sPFUTAF-hhv5p9xeV5GeDiVuBM', {
+      auth: { persistSession:true, autoRefreshToken:true }
+    });
+
+    const SUPA_KEYS = [
+      'jayne_estoque','jayne_catalogo','jayne_vendas','jayne_pedidos',
+      'jayne_fixos','jayne_orcamentos','jayne_pedidos_prod','jayne_vendas_fin',
+      'jayne_orc_cnt','jayne_ped_cnt','jayne_financeiro','jayne_fin_subs',
+      'jayne_fin_metas','jayne_fin_dist','jayne_fin_notas'
+    ];
+
+    // Override localStorage para auto-sync
+    const _origSet = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, value) {
+      _origSet(key, value);
+      if (SUPA_KEYS.includes(key)) supaSync(key, value);
+    };
+
+    async function supaSync(key, value) {
+      try {
+        const s = await _SUPA.auth.getSession();
+        if (!s.data.session) return;
+        let v; try { v = JSON.parse(value); } catch { v = value; }
+        await _SUPA.from('app_data').upsert({ chave:key, valor:v }, { onConflict:'chave' });
+      } catch(e) {}
+    }
+
+    async function syncFromCloud() {
+      try {
+        const { data } = await _SUPA.from('app_data').select('chave, valor');
+        if (data) data.forEach(row => {
+          if (row.valor !== null) {
+            const v = typeof row.valor === 'string' ? row.valor : JSON.stringify(row.valor);
+            _origSet(row.chave, v);
+          }
+        });
+        console.log('Sincronizado:', data ? data.length : 0, 'registros');
+      } catch(e) { console.warn('Offline - usando dados locais'); }
+    }
+
+    async function supaDoLogin() {
+      const email = document.getElementById('supa-email').value.trim();
+      const pass  = document.getElementById('supa-pass').value;
+      const errEl = document.getElementById('supa-error');
+      const btn   = document.getElementById('supa-login-btn');
+      errEl.textContent = '';
+      if (!email || !pass) { errEl.textContent = 'Preencha e-mail e senha.'; return; }
+      btn.disabled = true; btn.textContent = 'Entrando...';
+      try {
+        const { error } = await _SUPA.auth.signInWithPassword({ email, password:pass });
+        if (error) throw error;
+        await supaIniciar();
+      } catch(e) {
+        errEl.textContent = 'E-mail ou senha incorretos.';
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    }
+
+    async function supaLogout() {
+      await _SUPA.auth.signOut();
+      sessionStorage.removeItem('supa_synced');
+      location.reload();
+    }
+
+    async function supaIniciar() {
+      const s = await _SUPA.auth.getSession();
+      const session = s.data.session;
+      if (!session) {
+        document.getElementById('supa-login-screen').classList.remove('hidden');
+        return;
+      }
+      const nome = session.user.email.split('@')[0];
+      const nb = document.getElementById('supa-user-name');
+      if (nb) nb.textContent = nome;
+      const ub = document.getElementById('supa-user-bar');
+      if (ub) ub.style.display = 'flex';
+
+      if (!sessionStorage.getItem('supa_synced')) {
+        sessionStorage.setItem('supa_synced','1');
+        await syncFromCloud();
+        dadosEstoque        = JSON.parse(localStorage.getItem('jayne_estoque')      || '{}');
+        bancoProdutosAtelie = JSON.parse(localStorage.getItem('jayne_catalogo')     || '[]');
+        bancoOrcamentos     = JSON.parse(localStorage.getItem('jayne_orcamentos')   || '[]');
+        bancoPedidosProd    = JSON.parse(localStorage.getItem('jayne_pedidos_prod') || '[]');
+        bancoVendasFin      = JSON.parse(localStorage.getItem('jayne_vendas_fin')   || '[]');
+        orcCounter          = parseInt(localStorage.getItem('jayne_orc_cnt') || '100');
+        pedCounter          = parseInt(localStorage.getItem('jayne_ped_cnt') || '1000');
+      }
+
+      document.getElementById('supa-login-screen').classList.add('hidden');
+      try { renderizarTabelaEstoque(); } catch(e) {}
+      try { adicionarLinhaInsumo(); } catch(e) {}
+      try { renderizarGridProdutos(bancoProdutosAtelie); } catch(e) {}
+      try { renderizarVitrineCliente(); } catch(e) {}
+      try { renderizarVariacoesCadastro(); } catch(e) {}
+      try { atualizarLabelWhatsApp(); } catch(e) {}
+      try { ativarModoVitrineSeNecessario(); } catch(e) {}
+      try { renderizarSeletorAutonomia(); } catch(e) {}
+      try { if(bancoProdutosAtelie.length>0) produtoAtivoVitrine=bancoProdutosAtelie[0]; } catch(e) {}
+      try { orcRenderizar(); } catch(e) {}
+      try { pedRenderizar(); } catch(e) {}
+      try { renderizarDashboard(); } catch(e) {}
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        ['modal-vit-detalhes','modal-config-wpp','modal-carrinho'].forEach(id => {
+          const m = document.getElementById(id);
+          if (m && !m.classList.contains('hidden')) {
+            if (id==='modal-vit-detalhes') fecharDetalhesVitrine();
+            else if (id==='modal-config-wpp') fecharConfigWhatsApp();
+            else if (id==='modal-carrinho') fecharModalCarrinho();
+          }
+        });
+      });
+    }
+
+    // Service Worker PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('PWA ativo'))
+        .catch(e => console.warn('SW:', e.message));
+    }
+
+    window.addEventListener('load', supaIniciar);
+    </script>
+
 </body>
 </html>
