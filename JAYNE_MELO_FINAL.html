@@ -100,9 +100,7 @@
     font-family:'DM Sans',sans-serif;transition:opacity .2s;letter-spacing:.03em; }
   .supa-btn:hover { opacity:.9; }
   .supa-btn:disabled { opacity:.6;cursor:not-allowed; }
-  #supa-user-bar { display:none;align-items:center;gap:8px;
-    background:rgba(255,255,255,.1);border:1px solid rgba(201,169,110,.3);
-    border-radius:8px;padding:5px 12px;font-size:11px;color:rgba(255,255,255,.8); }
+  #supa-user-bar { display:none; align-items:center; gap:8px; }
     </style>
     <style>
       /* ════════════════════════════════════════════════════════
@@ -702,9 +700,12 @@
           </nav>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <div id="supa-user-bar">
-            <i class="fa-solid fa-circle-user"></i>
-            <span id="supa-user-name"></span>
-            <button onclick="supaLogout()" style="background:rgba(255,255,255,.15);border:none;color:rgba(255,255,255,.8);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px">Sair</button>
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(201,169,110,.4);border-radius:8px;padding:6px 12px;">
+              <i class="fa-solid fa-circle-user" style="color:var(--gold-light);font-size:13px;"></i>
+              <span id="supa-user-name" style="color:rgba(255,255,255,.9);font-size:12px;font-weight:500;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+              <span style="color:rgba(255,255,255,.3);font-size:10px;">|</span>
+              <button onclick="supaLogout()" style="background:none;border:none;color:var(--gold-light);font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:.04em;padding:0;text-transform:uppercase;">Sair</button>
+            </div>
           </div>
             <button onclick="exportarBackup()" title="Salvar backup"
               style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border:1px solid #c7e6cc;background:#f0faf1;color:#3a7a44;cursor:pointer;transition:all .18s;">
