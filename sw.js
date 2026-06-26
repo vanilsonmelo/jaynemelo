@@ -1,7 +1,7 @@
 /* ══ SERVICE WORKER — Jayne Melo · Bordando Sonhos ══════════ */
 const CACHE = 'jayne-melo-v2';
 const FILES = [
-  './JAYNE_MELO_FINAL.html',
+  './index.html',
   './financeiro.html',
   './manifest.json',
   './icon-192.png',
@@ -41,7 +41,7 @@ self.addEventListener('fetch', e => {
         return response;
       }).catch(() => {
         if (e.request.destination === 'document') {
-          return caches.match('./JAYNE_MELO_FINAL.html');
+          return caches.match('./index.html');
         }
       });
     })
