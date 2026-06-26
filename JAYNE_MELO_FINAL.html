@@ -4846,11 +4846,27 @@ Pode me confirmar o prazo de produção e formas de pagamento, por favor? 🌸`;
     async function supaIniciar() {
       // ── Vitrine do cliente: acesso público sem login ────────
       if (window.__MODO_VITRINE__) {
-        try { renderizarTabelaEstoque(); } catch(e) {}
+        // Buscar catálogo e estoque do Supabase (RLS pública via anon key)
+        try {
+          const { data } = await _SUPA
+            .from('app_data').select('chave, valor')
+            .in('chave', ['jayne_catalogo','jayne_estoque']);
+          if (data && data.length > 0) {
+            data.forEach(row => {
+              if (row.valor !== null) {
+                const v = typeof row.valor === 'string' ? row.valor : JSON.stringify(row.valor);
+                _origSet(row.chave, v);
+              }
+            });
+            dadosEstoque        = JSON.parse(localStorage.getItem('jayne_estoque')  || '{}');
+            bancoProdutosAtelie = JSON.parse(localStorage.getItem('jayne_catalogo') || '[]');
+          }
+        } catch(e) { console.warn('Vitrine offline:', e); }
+        try { renderizarTabelaEstoque(); }       catch(e) {}
         try { renderizarGridProdutos(bancoProdutosAtelie); } catch(e) {}
-        try { renderizarVitrineCliente(); } catch(e) {}
-        try { renderizarVariacoesCadastro(); } catch(e) {}
-        try { atualizarLabelWhatsApp(); } catch(e) {}
+        try { renderizarVitrineCliente(); }      catch(e) {}
+        try { renderizarVariacoesCadastro(); }   catch(e) {}
+        try { atualizarLabelWhatsApp(); }        catch(e) {}
         try { ativarModoVitrineSeNecessario(); } catch(e) {}
         return;
       }
@@ -4859,7 +4875,6 @@ Pode me confirmar o prazo de produção e formas de pagamento, por favor? 🌸`;
       const s = await _SUPA.auth.getSession();
       const session = s.data.session;
       if (!session) {
-        // Sem sessão: mostrar tela de login
         document.getElementById('supa-login-screen').style.display = 'flex';
         return;
       }
