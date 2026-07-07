@@ -4532,39 +4532,65 @@ Pode me confirmar o prazo de produção e formas de pagamento, por favor? 🌸`;
 
         function pedConcluir(id) {
             const p = bancoPedidosProd.find(x => x.id === id);
-            if (p) {
-                p.status = 'concluido';
+            if (!p) return;
+            p.status = 'concluido';
 
-                // ── Deduzir materiais do estoque ──────────────────
-                const erros = [];
-                (p.produtos || []).forEach(item => {
-                    const prod = bancoProdutosAtelie.find(x => x.id === item.produtoId);
-                    if (!prod || !prod.materiais) return;
-                    const qtdPedido = item.quantidade || 1;
-                    prod.materiais.forEach(mat => {
-                        const estoqueItem = dadosEstoque[mat.idOriginal];
-                        if (!estoqueItem) return;
-                        const consumo = (mat.qtdGastaEstoqueFormatada || 0) * qtdPedido;
-                        if (consumo <= 0) return;
-                        const qtdAntes = estoqueItem.qtd || 0;
-                        estoqueItem.qtd = Math.max(0, parseFloat((qtdAntes - consumo).toFixed(4)));
-                        // Atualizar cm² se for m²
-                        if (estoqueItem.unidade === 'm²') {
-                            estoqueItem.qtd_cm2 = parseFloat((estoqueItem.qtd * 10000).toFixed(0));
-                        }
-                        if (qtdAntes < consumo) {
-                            erros.push(`${estoqueItem.nome}: estoque insuficiente (tinha ${qtdAntes}, precisava ${consumo.toFixed(2)})`);
-                        }
-                    });
-                });
-                salvarDados();
-                if (erros.length > 0) {
-                    alert('⚠️ Pedido concluído com estoque negativo:\n\n' + erros.join('\n') + '\n\nO estoque foi zerado para esses itens.');
-                } else {
-                    toast('✅ Pedido concluído e estoque atualizado!');
+            // ── Deduzir materiais do estoque ──────────────────────
+            const itensProcessados = [];
+            const erros = [];
+            let totalDeduzido = 0;
+
+            (p.produtos || []).forEach(item => {
+                const qtdPedido = parseFloat(item.quantidade) || 1;
+                const prod = bancoProdutosAtelie.find(x => x.id === item.produtoId);
+
+                if (!prod) {
+                    erros.push(`Produto "${item.produtoNome}" não encontrado no catálogo.`);
+                    return;
                 }
+                if (!prod.materiais || prod.materiais.length === 0) {
+                    erros.push(`Produto "${prod.nome}" não tem materiais cadastrados na ficha técnica.`);
+                    return;
+                }
+
+                prod.materiais.forEach(mat => {
+                    if (!mat.idOriginal) return;
+                    const estoqueItem = dadosEstoque[mat.idOriginal];
+                    if (!estoqueItem) return;
+
+                    const consumoUnit = parseFloat(mat.qtdGastaEstoqueFormatada) || 0;
+                    if (consumoUnit <= 0) return;
+
+                    const consumoTotal = parseFloat((consumoUnit * qtdPedido).toFixed(4));
+                    const qtdAntes    = parseFloat(estoqueItem.qtd) || 0;
+                    const qtdDepois   = Math.max(0, parseFloat((qtdAntes - consumoTotal).toFixed(4)));
+
+                    estoqueItem.qtd = qtdDepois;
+                    if (estoqueItem.unidade === 'm²') {
+                        estoqueItem.qtd_cm2 = parseFloat((qtdDepois * 10000).toFixed(0));
+                    }
+
+                    itensProcessados.push(`${estoqueItem.nome} (${estoqueItem.cor||''}): -${consumoTotal} ${estoqueItem.unidade||''}`);
+                    totalDeduzido++;
+
+                    if (qtdAntes < consumoTotal) {
+                        erros.push(`${estoqueItem.nome}: tinha ${qtdAntes}, consumiu ${consumoTotal} → zerado`);
+                    }
+                });
+            });
+
+            salvarDados();
+            orcSalvarStorage();
+            orcFecharModal('orc-modal-pedido');
+            pedRenderizar();
+
+            if (totalDeduzido === 0) {
+                alert('⚠️ Pedido concluído, mas nenhum material foi deduzido do estoque.\n\nVerifique se os produtos têm ficha técnica com materiais cadastrados (aba Precificação).');
+            } else if (erros.length > 0) {
+                alert('✅ Pedido concluído!\n\n' + itensProcessados.join('\n') + '\n\n⚠️ Atenção:\n' + erros.join('\n'));
+            } else {
+                alert('✅ Pedido concluído!\n\nEstoque deduzido:\n' + itensProcessados.join('\n'));
             }
-            orcSalvarStorage(); orcFecharModal('orc-modal-pedido'); pedRenderizar();
         }
 
         function pedEntregar(id) {
