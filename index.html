@@ -4483,6 +4483,7 @@ Pode me confirmar o prazo de produção e formas de pagamento, por favor? 🌸`;
             footer    += `<button class="orc-btn orc-btn-outline" onclick="pedImprimir('${p.id}')"><i class="fa-solid fa-print"></i> Imprimir Ficha</button>`;
             if (p.status==='producao')  footer += `<button class="orc-btn orc-btn-green" onclick="pedConcluir('${p.id}')"><i class="fa-solid fa-circle-check"></i> Concluído</button>`;
             if (p.status==='concluido') footer += `<button class="orc-btn orc-btn-rose" onclick="pedEntregar('${p.id}')"><i class="fa-solid fa-truck"></i> Entregue</button>`;
+            footer += `<button class="orc-btn orc-btn-outline orc-btn-sm" style="color:#c96a6a;border-color:#fca5a5;" onclick="pedDeletar('${p.id}')"><i class="fa-solid fa-trash-can"></i></button>`;
             document.getElementById('ped-det-footer').innerHTML = footer;
             document.getElementById('orc-modal-pedido').classList.add('open');
         }
@@ -4503,6 +4504,12 @@ Pode me confirmar o prazo de produção e formas de pagamento, por favor? 🌸`;
             const sub    = document.getElementById('ped-modal-sub-'+pedId);
             if (bar) bar.style.width = pct+'%';
             if (sub) sub.innerText = `${feitas} de ${total} etapas`;
+        }
+
+        function pedDeletar(id) {
+            if (!confirm('Excluir este pedido? Esta ação não pode ser desfeita.')) return;
+            bancoPedidosProd = bancoPedidosProd.filter(p => p.id !== id);
+            orcSalvarStorage(); orcFecharModal('orc-modal-pedido'); pedRenderizar();
         }
 
         function pedConcluir(id) {
