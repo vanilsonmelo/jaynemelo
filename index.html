@@ -1249,7 +1249,7 @@
                                 <span id="txt-lucro-reais" class="text-xs font-medium text-emerald-700 block">R$ 0,00</span>
                             </div>
 
-                            <button onclick="salvarPrecoProduto()" class="w-full bg-[#b88472] hover:bg-[#a37363] text-white font-bold py-3.5 rounded-xl shadow transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 mt-4">
+                            <button id="btn-salvar-preco" onclick="salvarPrecoProduto()" class="w-full bg-[#b88472] hover:bg-[#a37363] text-white font-bold py-3.5 rounded-xl shadow transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 mt-4">
                                 <i class="fa-solid fa-cloud-arrow-up"></i> Registrar Estrutura de Preço
                             </button>
                             <button onclick="limparPrecificacao()" class="w-full bg-white hover:bg-gray-50 border border-[#dfb2a3] text-[#b88472] font-bold py-3.5 rounded-xl shadow-sm transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 mt-2">
@@ -1791,6 +1791,11 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="px-6 pb-6">
+                <button onclick="" id="btn-editar-composicao" class="w-full bg-[#4a3731] hover:bg-[#3a2b26] text-white font-bold py-3 rounded-xl shadow transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-pen-ruler"></i> Editar Composição do Produto
+                </button>
             </div>
         </div>
     </div>
@@ -2643,6 +2648,9 @@ ${o.obs ? `<div class="section"><div class="section-title">Observações</div><d
 
         function limparPrecificacao() {
             if(confirm("Deseja limpar todos os dados desta calculadora e iniciar uma nova?")) {
+                produtoEmEdicaoId = null;
+                const btnReset = document.getElementById('btn-salvar-preco');
+                if (btnReset) btnReset.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Registrar Estrutura de Preço';
                 document.getElementById('tabela-insumos-corpo').innerHTML = '';
                 document.getElementById('nome-produto').value = '';
                 document.getElementById('tempo-producao').value = '0';
@@ -2820,6 +2828,48 @@ ${o.obs ? `<div class="section"><div class="section-title">Observações</div><d
             return "";
         }
 
+        let produtoEmEdicaoId = null;
+
+        function editarComposicaoProduto(id) {
+            const prod = bancoProdutosAtelie.find(p => p.id === id);
+            if (!prod) return;
+
+            fecharFichaDescritiva();
+            alternarMódulo('precificacao');
+            produtoEmEdicaoId = id;
+
+            document.getElementById('nome-produto').value = prod.nome || '';
+            document.getElementById('preco-venda-input').value = (prod.precoVenda || 0).toFixed(2);
+            document.getElementById('tempo-producao').value = parseFloat(prod.tempoProducao) || 0;
+            document.getElementById('custo-embalagem').value = (prod.custosFixos?.embalagem || 0).toFixed(2);
+            document.getElementById('custo-tags').value = (prod.custosFixos?.tags || 0).toFixed(2);
+            document.getElementById('custo-envio').value = (prod.custosFixos?.envio || 0).toFixed(2);
+            const dp = document.getElementById('descricao-produto'); if (dp) dp.value = prod.descricao || '';
+            const sp = document.getElementById('selo-produto'); if (sp) sp.value = prod.selo || '';
+            const cp = document.getElementById('categoria-produto'); if (cp) cp.value = prod.categoria || '';
+            const xp = document.getElementById('destacar-produto'); if (xp) xp.checked = !!prod.destaque;
+
+            variacoesCadastroAtual = prod.variacoes ? [...prod.variacoes] : [];
+            renderizarVariacoesCadastro();
+
+            document.getElementById('tabela-insumos-corpo').innerHTML = '';
+            (prod.materiais || []).forEach(m => {
+                adicionarLinhaInsumo();
+                const linha = document.querySelector('#tabela-insumos-corpo tr:last-child');
+                const seletor = linha.querySelector('.seletor-estoque');
+                seletor.value = m.idOriginal;
+                puxarDadosDoEstoque(seletor);
+                linha.querySelector('.qtd-input').value = m.formula;
+                calcularPrecificacao();
+            });
+            if (!(prod.materiais || []).length) adicionarLinhaInsumo();
+
+            calcularPrecificacao();
+
+            const btn = document.getElementById('btn-salvar-preco');
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações do Produto';
+        }
+
         function salvarPrecoProduto() {
             let nome = document.getElementById('nome-produto').value.trim();
             let precoVenda = parseFloat(document.getElementById('preco-venda-input').value) || 0;
@@ -2831,6 +2881,38 @@ ${o.obs ? `<div class="section"><div class="section-title">Observações</div><d
             const selo      = (document.getElementById('selo-produto')?.value || '').trim();
             const categoria = (document.getElementById('categoria-produto')?.value || '').trim();
             const destacar  = !!document.getElementById('destacar-produto')?.checked;
+
+            if (produtoEmEdicaoId) {
+                const prodExistente = bancoProdutosAtelie.find(p => p.id === produtoEmEdicaoId);
+                if (!prodExistente) { produtoEmEdicaoId = null; alert('Produto não encontrado. Tente novamente.'); return; }
+
+                prodExistente.nome = nome;
+                prodExistente.custoBase = custoTotal;
+                prodExistente.precoVenda = precoVenda;
+                prodExistente.tempoProducao = document.getElementById('tempo-producao').value + " horas";
+                prodExistente.descricao = descricao;
+                prodExistente.variacoes = variacoes;
+                prodExistente.selo = selo;
+                prodExistente.categoria = categoria;
+                prodExistente.destaque = destacar;
+                prodExistente.custosFixos = {
+                    embalagem: parseFloat(document.getElementById('custo-embalagem').value)||0,
+                    tags: parseFloat(document.getElementById('custo-tags').value)||0,
+                    envio: parseFloat(document.getElementById('custo-envio').value)||0
+                };
+                prodExistente.materiais = JSON.parse(JSON.stringify(insumosFichaTecnica));
+
+                salvarDados();
+                renderizarGridProdutos(bancoProdutosAtelie);
+                renderizarVitrineCliente();
+                renderizarSeletorAutonomia();
+                alert(`"${nome}" atualizado com sucesso!\nA Composição/Ficha Técnica foi salva.`);
+
+                produtoEmEdicaoId = null;
+                const btn = document.getElementById('btn-salvar-preco');
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Registrar Estrutura de Preço';
+                return;
+            }
 
             bancoProdutosAtelie.push({
                 id: "prod_" + Date.now(),
@@ -3179,6 +3261,9 @@ ${o.obs ? `<div class="section"><div class="section-title">Observações</div><d
                 });
             }
             
+            const btnEditarComposicao = document.getElementById('btn-editar-composicao');
+            if (btnEditarComposicao) btnEditarComposicao.setAttribute('onclick', `editarComposicaoProduto('${prod.id}')`);
+
             const modal = document.getElementById('modal-ficha');
             modal.classList.remove('hidden');
             setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
