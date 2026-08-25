@@ -1,0 +1,19 @@
+name: Keep Supabase Awake
+
+# Roda automaticamente toda segunda e quinta às 09:00 (horário de Brasília, UTC-3 -> 12:00 UTC)
+# e também pode ser disparado manualmente pela aba "Actions" do GitHub.
+on:
+  schedule:
+    - cron: "0 12 * * 1,4"
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST endpoint
+        run: |
+          curl -s -o /dev/null -w "Status: %{http_code}\n" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
